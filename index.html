@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muisca: Arte, Oro y Tejidos</title>
+
+    <!-- Fuentes: Philosopher (Ancestral/Orgánico) y Lato (Lectura) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Philosopher:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+
+    <!-- Librerías Externas (Three.js y GSAP) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        /* --- RESET Y BASES --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #020202;
+            color: #e0e0e0;
+            font-family: 'Lato', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* --- CANVAS THREE.JS --- */
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.8) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- UI & NAVEGACIÓN --- */
+        nav {
+            position: fixed;
+            top: 0; width: 100%;
+            padding: 30px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            mix-blend-mode: difference;
+        }
+
+        .logo {
+            font-family: 'Philosopher', sans-serif;
+            font-size: 2rem;
+            color: #FFD700;
+            letter-spacing: 1px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .menu ul {
+            display: flex; gap: 40px; list-style: none;
+        }
+
+        .menu a {
+            color: #fff; text-decoration: none;
+            font-family: 'Philosopher', sans-serif;
+            font-size: 1.1rem; letter-spacing: 1px;
+            position: relative; transition: color 0.3s;
+        }
+
+        .menu a::after {
+            content: ''; position: absolute; width: 0; height: 2px;
+            bottom: -5px; left: 0; background-color: #FFD700;
+            transition: width 0.3s ease;
+        }
+
+        .menu a:hover { color: #FFD700; }
+        .menu a:hover::after { width: 100%; }
+
+        /* --- BOTÓN DE AUDIO --- */
+        .audio-control {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 50px;
+            height: 50px;
+            border: 1px solid #FFD700;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+        .audio-control:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+        .audio-icon {
+            width: 24px;
+            height: 24px;
+            fill: #FFD700;
+        }
+        /* Animación para cuando suena */
+        .audio-control.playing {
+            animation: pulseAudio 2s infinite;
+        }
+        @keyframes pulseAudio {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        }
+
+        /* --- SECCIONES DE CONTENIDO --- */
+        section {
+            position: relative;
+            min-height: 100vh;
+            width: 100%;
+            display: flex; align-items: center;
+            padding: 0 10%;
+        }
+
+        .content-block {
+            max-width: 550px;
+            background: linear-gradient(135deg, rgba(10, 10, 10, 0.8), rgba(20, 20, 10, 0.6));
+            backdrop-filter: blur(8px);
+            padding: 50px;
+            border-left: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Estilo especial para las secciones centradas (Cosmovisión / Materia) */
+        .centered-section {
+            justify-content: center;
+        }
+        
+        .centered-block {
+            text-align: center;
+            border-left: none;
+            /* Bordes sutiles arriba y abajo para dar equilibrio sin ser "material" */
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+            background: radial-gradient(circle, rgba(20, 20, 20, 0.9), rgba(5, 5, 5, 0.7));
+            max-width: 700px;
+        }
+
+        .hero-content {
+            text-align: center; margin: 0 auto; max-width: 900px;
+            border: none; background: transparent; box-shadow: none; backdrop-filter: none;
+        }
+
+        h1, h2, h3 { font-family: 'Philosopher', sans-serif; color: #FFD700; }
+        h1 { font-size: 5rem; line-height: 1.1; text-shadow: 0 0 30px rgba(255, 215, 0, 0.3); margin-bottom: 30px; }
+        h2 { font-size: 3.5rem; margin-bottom: 15px; }
+        h3 { font-size: 1.5rem; color: #bfa65a; margin-bottom: 25px; font-weight: 400; font-style: italic; }
+        p { line-height: 1.9; font-size: 1.15rem; margin-bottom: 25px; color: #d1d1d1; }
+
+        .quote {
+            font-family: 'Philosopher', sans-serif; font-style: italic;
+            color: #FFD700; font-size: 1.4rem; margin-top: 30px;
+            display: block; border-left: none; text-align: center; opacity: 0.9;
+        }
+
+        /* Alineaciones específicas */
+        #barro { justify-content: flex-start; }
+        #oro { justify-content: flex-end; text-align: right; }
+        #oro .content-block {
+            border-left: none; border-right: 2px solid rgba(255, 215, 0, 0.4);
+            background: linear-gradient(-135deg, rgba(10, 10, 10, 0.8), rgba(40, 30, 10, 0.6));
+        }
+        #tejidos { justify-content: flex-start; }
+
+        /* Footer */
+        #footer {
+            min-height: 60vh;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            text-align: center;
+            background: radial-gradient(circle at bottom, #1a1500 0%, #000000 70%);
+        }
+
+        .cta-button {
+            margin-top: 40px; padding: 18px 50px;
+            background: transparent; border: 1px solid #FFD700;
+            color: #FFD700; font-family: 'Philosopher', sans-serif;
+            font-size: 1.2rem; cursor: pointer;
+            transition: all 0.5s ease; text-transform: uppercase;
+            letter-spacing: 3px; position: relative; overflow: hidden;
+        }
+        .cta-button::before {
+            content: ''; position: absolute; top: 0; left: -100%;
+            width: 100%; height: 100%; background: rgba(255, 215, 0, 0.2);
+            transition: left 0.5s ease;
+        }
+        .cta-button:hover::before { left: 0; }
+        .cta-button:hover { box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); }
+
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: absolute; bottom: 7px; left: 50%;
+            transform: translateX(-50%); display: flex;
+            flex-direction: column; align-items: center;
+            gap: 10px; opacity: 0.6;
+        }
+        .mouse {
+            width: 26px; height: 40px; border: 2px solid #FFD700;
+            border-radius: 20px; position: relative;
+        }
+        .wheel {
+            width: 4px; height: 8px; background: #FFD700;
+            position: absolute; top: 6px; left: 50%;
+            transform: translateX(-50%); border-radius: 2px;
+            animation: scrollWheel 2s infinite;
+        }
+        @keyframes scrollWheel {
+            0% { top: 6px; opacity: 1; }
+            100% { top: 20px; opacity: 0; }
+        }
+
+        /* Loader */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column; transition: opacity 1s ease;
+        }
+        .loader-text {
+            color: #FFD700; font-family: 'Philosopher', sans-serif;
+            margin-top: 20px; letter-spacing: 5px; font-size: 0.9rem;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loader">
+        <div class="loader-text">TEJIENDO UNIVERSO...</div>
+    </div>
+
+    <div class="vignette"></div>
+
+    <!-- AUDIO ELEMENT (Reemplaza src con tu archivo real) -->
+    <audio id="ambient-audio" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/10/25/audio_2c54215357.mp3?filename=wind-outside-sound-ambient-117691.mp3" type="audio/mpeg">
+        Tu navegador no soporta audio.
+    </audio>
+
+    <nav>
+        <div class="logo">MUISCA</div>
+        <div class="menu">
+            <ul>
+                <li><a href="#hero">Inicio</a></li>
+                <li><a href="#barro">Barro</a></li>
+                <li><a href="#oro">Oro</a></li>
+                <li><a href="#tejidos">Tejidos</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- CONTROL DE AUDIO -->
+    <div class="audio-control" id="audio-btn" title="Activar Sonido">
+        <!-- Icono de Sonido (SVG) -->
+        <svg class="audio-icon" id="icon-play" viewBox="0 0 24 24" style="display: block;">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+        <svg class="audio-icon" id="icon-mute" viewBox="0 0 24 24" style="display: none;">
+            <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+        </svg>
+    </div>
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Hero -->
+    <section id="hero">
+        <div class="content-block hero-content">
+            <h3>La creación como legado vivo</h3>
+            <h1>MATERIA ANCESTRAL</h1>
+            <p>Antes de que existieran los mapas, existían las manos.
+Manos que escuchaban la tierra, que moldeaban la luz y que unían los hilos del mundo.
+Todo lo que somos nace de la materia.</p>
+            <div class="scroll-indicator">
+                <div class="mouse"><div class="wheel"></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Barro -->
+    <section id="barro">
+        <div class="content-block">
+            <h2>El Barro</h2>
+            <h3>La Memoria de la Tierra</h3>
+            <p>El barro no es tierra quieta: es tiempo.
+Cuando se humedece, despierta.
+Entre los dedos toma forma el cuenco que alimenta, la vasija que guarda y el recipiente donde se siembra la historia.</p>
+            <span class="quote">Moldear la arcilla es moldear identidad: un pequeño universo donde conviven el fuego, el agua y el aliento humano.</span>
+        </div>
+    </section>
+
+    <!-- Oro -->
+    <section id="oro">
+        <div class="content-block">
+            <h2>El Oro</h2>
+            <h3>El Sudor del Sol (Sua)</h3>
+            <p>El oro no era riqueza: era un puente.
+Un rayo de sol que se dejaba trabajar.
+En su brillo vivía el aliento de lo divino.</p>
+            <span class="quote">Pulir el metal era pulir el espíritu, y cada pieza era una ofrenda para que lo visible y lo invisible pudieran encontrarse.</span>
+        </div>
+    </section>
+
+    <!-- Tejidos -->
+    <section id="tejidos">
+        <div class="content-block">
+            <h2>Los Tejidos</h2>
+            <h3>El Telar del Universo</h3>
+            <p>Los hilos nunca se cruzan por accidente.
+Cada trama une caminos, historias y ciclos del sol y del agua.
+Tejer es escribir sin tinta: un lenguaje hecho de ritmo.</p>
+            <span class="quote">Quien domina el telar conoce cómo se ordenan las fuerzas del mundo.</span>
+        </div>
+    </section>
+
+    <!-- NUEVA SECCIÓN: Cosmovisión -->
+    <section id="cosmovision" class="centered-section">
+        <div class="content-block centered-block">
+            <h2>Una Cosmovisión</h2>
+            <p>Para esta cultura ancestral, nada existía solo: la tierra respiraba, la luz hablaba y los hilos conectaban lo que estaba separado.</p>
+            <p>Las artesanías no eran objetos: eran relatos, eran puentes, eran un modo de cuidar el equilibrio.</p>
+        </div>
+    </section>
+
+    <!-- NUEVA SECCIÓN: Materia -->
+    <section id="materia" class="centered-section">
+        <div class="content-block centered-block">
+            <h2>La Materia Sigue Viva</h2>
+            <p>Estos saberes continúan. No como recuerdo, sino como patrimonio vivo.</p>
+            <p>Cada pieza que nace de la tierra, del metal o de la fibra lleva consigo la fuerza de un origen que no se ha apagado.</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <section id="footer">
+        <div class="content-block hero-content">
+            <h2>Preservar el Legado</h2>
+            <p>Revalorar el oficio es revalorar la memoria.
+Cada creación artesanal mantiene vivo un mundo que aún nos enseña a escuchar.</p>
+            <button class="cta-button">Apoyar Patrimonio</button>
+        </div>
+    </section>
+
+    <script>
+        // --- CONTROL DE AUDIO ---
+        const audioBtn = document.getElementById('audio-btn');
+        const audio = document.getElementById('ambient-audio');
+        const iconPlay = document.getElementById('icon-play');
+        const iconMute = document.getElementById('icon-mute');
+        let isPlaying = false;
+
+        audio.volume = 0.5; // Volumen inicial al 50%
+
+        audioBtn.addEventListener('click', () => {
+            if (!isPlaying) {
+                audio.play().then(() => {
+                    isPlaying = true;
+                    iconPlay.style.display = 'block';
+                    iconMute.style.display = 'none';
+                    audioBtn.classList.add('playing');
+                    // Cambiar icono a "sonido activo" visualmente si se desea
+                }).catch(e => console.log("Audio play error:", e));
+            } else {
+                audio.pause();
+                isPlaying = false;
+                audioBtn.classList.remove('playing');
+                // Podríamos cambiar icono a mute si quisiéramos indicar pausa
+            }
+        });
+
+
+        // --- CONFIGURACIÓN THREE.JS ---
+        const canvas = document.querySelector('#webgl-canvas');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020202, 0.035);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 6;
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            alpha: true,
+            antialias: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // --- INPUTS ---
+        let mouse = { x: 0, y: 0 };
+        let targetMouse = { x: 0, y: 0 };
+        window.addEventListener('mousemove', (e) => {
+            targetMouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            targetMouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // --- ILUMINACIÓN ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+        const sunLight = new THREE.PointLight(0xFFD700, 1.2, 20);
+        sunLight.position.set(2, 2, 5);
+        scene.add(sunLight);
+        const moonLight = new THREE.PointLight(0x4a6fa5, 0.8, 20);
+        moonLight.position.set(-5, -2, 2);
+        scene.add(moonLight);
+
+        // --- SHADER ---
+        const alphaCutoutVertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const alphaCutoutFragmentShader = `
+            uniform sampler2D map;
+            uniform float opacity;
+            uniform vec3 colorTint;
+            varying vec2 vUv;
+            void main() {
+                vec4 texColor = texture2D(map, vUv);
+                float brightness = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+                float alpha = smoothstep(0.05, 0.3, brightness); 
+                gl_FragColor = vec4(texColor.rgb * colorTint, alpha * opacity);
+            }
+        `;
+
+        const loadingManager = new THREE.LoadingManager(() => {
+            const loader = document.getElementById('loader');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 1000);
+            initScrollAnimations();
+        });
+        const textureLoader = new THREE.TextureLoader(loadingManager);
+
+        // --- OBJETOS ---
+        const clayTexture = textureLoader.load('image_855655.jpg');
+        const clayGeometry = new THREE.PlaneGeometry(4, 5, 20, 20);
+        const clayMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                map: { value: clayTexture },
+                opacity: { value: 1.0 },
+                colorTint: { value: new THREE.Vector3(1.0, 0.9, 0.8) }
+            },
+            vertexShader: alphaCutoutVertexShader,
+            fragmentShader: alphaCutoutFragmentShader,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        const clayMesh = new THREE.Mesh(clayGeometry, clayMaterial);
+        clayMesh.position.set(3, -15, 0);
+        scene.add(clayMesh);
+
+        const goldTexture = textureLoader.load('image_855699.jpg');
+        const goldGeometry = new THREE.PlaneGeometry(3.5, 4.5, 20, 20);
+        const goldMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                map: { value: goldTexture },
+                opacity: { value: 1.0 },
+                colorTint: { value: new THREE.Vector3(1.2, 1.0, 0.4) }
+            },
+            vertexShader: alphaCutoutVertexShader,
+            fragmentShader: alphaCutoutFragmentShader,
+            transparent: true,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const goldMesh = new THREE.Mesh(goldGeometry, goldMaterial);
+        goldMesh.position.set(-3, -25, 0);
+        scene.add(goldMesh);
+
+        const fabricTexture = textureLoader.load('image_8555fa.jpg');
+        const fabricGeometry = new THREE.PlaneGeometry(5, 3.5, 50, 50);
+        const fabricMaterial = new THREE.MeshStandardMaterial({
+            map: fabricTexture,
+            roughness: 0.8,
+            side: THREE.DoubleSide,
+            transparent: true
+        });
+        const fabricMesh = new THREE.Mesh(fabricGeometry, fabricMaterial);
+        fabricMesh.position.set(0, -35, 0);
+        scene.add(fabricMesh);
+
+        // --- PARTÍCULAS ---
+        const dustGeo = new THREE.BufferGeometry();
+        const dustCount = 800;
+        const dustPos = new Float32Array(dustCount * 3);
+        for (let i = 0; i < dustCount * 3; i += 3) {
+            dustPos[i] = (Math.random() - 0.5) * 20;
+            dustPos[i + 1] = (Math.random() - 0.5) * 20;
+            dustPos[i + 2] = (Math.random() - 0.5) * 10;
+        }
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        const dustSystem = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+            size: 0.02, color: 0xFFD700, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending
+        }));
+        scene.add(dustSystem);
+
+        const sporeGeo = new THREE.BufferGeometry();
+        const sporeCount = 150;
+        const sporePos = new Float32Array(sporeCount * 3);
+        for (let i = 0; i < sporeCount * 3; i++) sporePos[i] = (Math.random() - 0.5) * 25;
+        sporeGeo.setAttribute('position', new THREE.BufferAttribute(sporePos, 3));
+        const sporeSystem = new THREE.Points(sporeGeo, new THREE.PointsMaterial({
+            size: 0.08, color: 0xcd7f32, transparent: true, opacity: 0.4, blending: THREE.NormalBlending
+        }));
+        scene.add(sporeSystem);
+
+        // --- LOOP ---
+        const clock = new THREE.Clock();
+        function animate() {
+            const time = clock.getElapsedTime();
+            mouse.x += (targetMouse.x - mouse.x) * 0.05;
+            mouse.y += (targetMouse.y - mouse.y) * 0.05;
+
+            camera.position.x += (mouse.x * 0.5 - camera.position.x) * 0.05;
+            camera.position.y += (mouse.y * 0.5 - camera.position.y) * 0.05;
+            camera.lookAt(0, 0, 0);
+
+            if (clayMesh.visible) {
+                clayMesh.rotation.y = Math.sin(time * 0.5) * 0.1 + (mouse.x * 0.3);
+                clayMesh.rotation.x = Math.cos(time * 0.3) * 0.05 - (mouse.y * 0.3);
+            }
+            if (goldMesh.visible) {
+                goldMesh.rotation.y = Math.sin(time * 0.8) * 0.15 + (mouse.x * 0.4);
+                goldMesh.rotation.z = Math.cos(time * 0.6) * 0.05 + (mouse.y * 0.1);
+            }
+
+            const posAttr = fabricGeometry.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                const x = posAttr.getX(i);
+                const y = posAttr.getY(i);
+                const z = Math.sin(x * 1.5 + time) * 0.3 + Math.cos(y * 1.0 + time * 0.5) * 0.1;
+                posAttr.setZ(i, z);
+            }
+            posAttr.needsUpdate = true;
+            fabricMesh.rotation.y = mouse.x * 0.1;
+
+            dustSystem.rotation.y = time * 0.02;
+            sporeSystem.rotation.y = -time * 0.01;
+            sporeSystem.position.y = Math.sin(time * 0.2) * 0.5;
+            sunLight.position.x = 2 + mouse.x * 3;
+            sunLight.position.y = 2 + mouse.y * 3;
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- GSAP SCROLL ANIMATIONS ---
+        gsap.registerPlugin(ScrollTrigger);
+
+        function initScrollAnimations() {
+            
+            // Fade In textos (General para todos)
+            gsap.utils.toArray('.content-block').forEach(block => {
+                gsap.fromTo(block, 
+                    { opacity: 0, y: 50 },
+                    { 
+                        opacity: 1, y: 0, duration: 1.5, ease: "power2.out",
+                        scrollTrigger: { trigger: block, start: "top 80%" }
+                    }
+                );
+            });
+
+            // TIMELINE BARRO
+            let tlBarro = gsap.timeline({
+                scrollTrigger: { trigger: "#barro", start: "top bottom", end: "bottom top", scrub: 1 }
+            });
+            tlBarro.to(clayMesh.position, { y: 0, x: 2, z: 1, duration: 3 }) 
+                   .to(clayMesh.position, { y: 8, opacity: 0, duration: 2 }); 
+
+            // TIMELINE ORO
+            let tlOro = gsap.timeline({
+                scrollTrigger: { trigger: "#oro", start: "top bottom", end: "bottom top", scrub: 1 }
+            });
+            tlOro.fromTo(goldMesh.position, {y: -15, x: -5}, { y: 0, x: -2, z: 1.5, duration: 3 })
+                 .to(goldMesh.position, { y: 8, duration: 2 });
+
+            // TIMELINE TEJIDOS -> COSMOVISIÓN
+            // El tejido entra, se queda un momento, y luego sale al llegar a la siguiente sección
+            let tlTejido = gsap.timeline({
+                scrollTrigger: { 
+                    trigger: "#tejidos", 
+                    start: "top bottom", 
+                    end: "center top", // Extendemos el final para controlar la salida manual
+                    scrub: 1 
+                }
+            });
+            
+            // Entra el tejido
+            tlTejido.fromTo(fabricMesh.position, { y: -15 }, { y: 0, z: 0.5, duration: 3 });
+
+            // TIMELINE SALIDA TEJIDO (Transición hacia Cosmovisión)
+            // Cuando entramos a "Cosmovisión", el tejido se va para dejar el espacio vacío y espiritual
+            let tlSalidaTejido = gsap.timeline({
+                scrollTrigger: {
+                    trigger: "#cosmovision",
+                    start: "top bottom",
+                    end: "top center",
+                    scrub: 1
+                }
+            });
+            tlSalidaTejido.to(fabricMesh.position, { y: 10, opacity: 0, duration: 2 });
+
+            // Las secciones "Cosmovisión" y "Materia" no tienen objetos 3D específicos,
+            // dejando solo las partículas y la niebla para enfatizar el texto.
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+
+</html>
